@@ -1,0 +1,186 @@
+load_file("nrngui.hoc")
+load_file("cell_seed6_0_mouse1-AS.hoc")
+cvode_active(1) 
+
+objref  testcell, stim, tmsyn[100], nctm[100], nmdasyn[100], ncnmda[100], rn, vec, vec2
+testcell = new CA1_PC_ljp() 
+
+testcell.init()
+numapic=96
+weightTM=0.0005
+weightNMDA=0.0009
+numsyn=5
+celsius=34
+seedn=3
+rn = new Random(seedn)
+vec = new Vector()
+vec2 = new Vector()
+
+
+//********************************************
+tstop=200
+Vrest=-70
+
+proc init() {
+	t=0
+        forall {
+        v=Vrest
+   }
+	finitialize(Vrest)
+        fcurrent()
+
+        forall {
+	for (x) {
+	if (ismembrane("nax")){e_pas(x)=v(x)+(ina(x)+ik(x))/g_pas(x)}
+	if (ismembrane("hd")) {e_pas(x)=e_pas(x)+i_hd(x)/g_pas(x)}
+	if (ismembrane("cat")){e_pas(x)=e_pas(x)+ica(x)/g_pas(x)}
+		}
+	}
+	cvode.re_init()
+	cvode.event(tstop)
+	access testcell.soma
+	}
+
+init() 
+
+access testcell.soma
+
+tot=0
+forall {tot=tot+nseg}
+distance()
+maxdist=0
+forsec "apic" for(x) {if (distance(x)>maxdist) {maxdist=distance(x)}}
+
+	stim = new NetStims(.5)
+	stim.interval=10
+	stim.number = 5
+	stim.start=50
+	stim.noise=0
+	stim.seed(987651119)
+	
+for z=0, numapic-1 testcell.apic[z] {for (x,0) { if (distance(x)>50 && distance(x)<100 && diam<1.19) {
+	tmsyn[z] = new tmgsynd(0.5)
+	nctm[z] = new NetCon(stim,tmsyn[z],0,0,0)
+	nmdasyn[z] = new nmdanet(0.5)
+	ncnmda[z] = new NetCon(stim,nmdasyn[z],0,0,0)
+	vec.append(z)
+	}
+}
+
+}
+rn.discunif(0,vec.size()-1)
+
+for j=0, numsyn-1 {
+	n1=rn.repick()
+	vec2.append(n1)
+}
+
+proc locampa() {
+	for j=0, vec2.size()-1 {
+	n1=rn.repick()
+	nctm[vec.x[vec2.x[j]]].weight=weightTM
+}
+}
+
+proc locnmda() {
+	for j=0, vec2.size()-1 {
+	ncnmda[vec.x[vec2.x[j]]].weight=weightNMDA
+}
+}
+
+proc resetampa(){ 
+	for k=0, vec.size()-1 {
+	nctm[vec.x[k]].weight=0
+	}
+}
+
+proc resetnmda(){ 
+	for k=0, vec.size()-1 {
+	ncnmda[vec.x[k]].weight=0
+	}
+}
+
+proc change_taurec(){ local x
+x = $1
+taurec= x
+for j=0, vec2.size()-1 {
+tmsyn[vec.x[vec2.x[j]]].tau_rec=taurec
+}
+}
+
+proc change_tau1(){ local x
+x = $1
+tau1= x
+for j=0, vec2.size()-1 {
+tmsyn[vec.x[vec2.x[j]]].tau_1=tau1
+}
+}
+
+proc resetloc(){vec2.resize(0)}
+
+proc control(){
+resetampa()
+resetnmda()
+weightTM=0.0005
+weightNMDA=0.0009
+locampa()
+locnmda()
+taurec=10
+tau1=4.5
+change_taurec(taurec)
+change_tau1(tau1)
+run()
+}
+
+proc nmda(){
+resetampa()
+resetnmda()
+weightTM=0.0005
+weightNMDA=0.000243
+locampa()
+locnmda()
+taurec=10
+tau1=4.5
+change_taurec(taurec)
+change_tau1(tau1)
+run()
+}
+
+proc ampa(){
+resetampa()
+resetnmda()
+weightTM=0.0005
+weightNMDA=0.0009
+locampa()
+locnmda()
+taurec=20
+tau1=4.5
+change_taurec(taurec)
+change_tau1(tau1)
+run()
+}
+
+proc both(){
+resetampa()
+resetnmda()
+weightTM=0.0005
+weightNMDA=0.000243
+locampa()
+locnmda()
+taurec=20
+tau1=4.5
+change_taurec(taurec)
+change_tau1(tau1)
+run()
+}
+
+xpanel("fig. 6C")
+xbutton("Ctrl","control()")
+xbutton("Neurons only","nmda()")
+xbutton("Astrocytes only","ampa()")
+xbutton("Neurons and Astrocites","both()")
+xpanel()
+
+load_file("sim-day.ses")
+
+
