@@ -13,6 +13,7 @@ numsyn=5
 celsius=34
 seedn=3
 rn = new Random(seedn)
+rn.Random123()
 vec = new Vector()
 vec2 = new Vector()
 
